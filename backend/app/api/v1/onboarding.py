@@ -42,3 +42,13 @@ async def update_onboarding(
     """Partially update onboarding profile."""
     svc = UserService(db)
     return await svc.update_onboarding(current_user.id, data)
+
+
+@router.get("/profile", response_model=OnboardingResponse)
+async def get_profile(
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the user's onboarding profile."""
+    svc = UserService(db)
+    return await svc.get_profile(current_user.id)

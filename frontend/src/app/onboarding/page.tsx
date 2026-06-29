@@ -54,10 +54,12 @@ export default function OnboardingWizard() {
     setIsSubmitting(true);
     try {
       // Map to API schema format
+      const severityStr = selections.severity || "";
+      const severity = severityStr.includes("Severe") ? 8 : severityStr.includes("Critical") ? 10 : severityStr.includes("Moderate") ? 5 : 2;
+
       const payload = {
-        addiction_type: selections.addiction || "Other",
-        severity: selections.severity?.includes("Severe") ? 8 : selections.severity?.includes("Critical") ? 10 : selections.severity?.includes("Moderate") ? 5 : 2,
-        goal: selections.goal || "Complete Abstinence",
+        bad_habits: [{ name: selections.addiction || "Other", severity: severity }],
+        goals: [selections.goal || "Complete Abstinence"],
         triggers: []
       };
 
