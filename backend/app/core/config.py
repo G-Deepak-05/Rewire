@@ -42,8 +42,9 @@ class Settings(BaseSettings):
     celery_result_backend: str = "redis://localhost:6379/2"
 
     # ─── AI / LLM ────────────────────────────────────────────────────────────
-    # The API key is loaded from .env via OPENROUTER_API_KEY — never in source
-    openrouter_api_key: str = ""
+    # The API key is loaded from .env via LLM_API_KEY — never in source
+    llm_api_key: str = ""
+    llm_api_base: str | None = None
     llm_model: str = "openrouter/google/gemini-2.5-flash"
     llm_temperature: float = 0.7
     llm_max_tokens: int = 4096

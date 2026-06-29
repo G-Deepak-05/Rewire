@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
         logger.error("Redis connection failed", error=str(e))
 
     # Validate LLM connectivity
-    if settings.openrouter_api_key:
+    if settings.llm_api_key:
         logger.info("LLM configured", model=settings.llm_model)
     else:
         logger.warning("No LLM API key configured — AI features will use fallbacks")
