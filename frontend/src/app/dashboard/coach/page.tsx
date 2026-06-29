@@ -14,12 +14,10 @@ export default function CoachPage() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSend = async (e: React.FormEvent) => {
@@ -50,15 +48,15 @@ export default function CoachPage() {
        {/* Background ambient glow */}
        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
        
-      <div className="mb-6 flex justify-between items-center relative z-10">
+      <div className="mb-6 flex justify-between items-center relative z-10 shrink-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">AI Recovery Coach</h1>
           <p className="text-muted-foreground mt-1">Real-time cognitive interventions and support.</p>
         </div>
       </div>
 
-      <Card className="flex-1 flex flex-col glass-card border-primary/20 overflow-hidden relative z-10">
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <Card className="flex-1 flex flex-col glass-card border-primary/20 overflow-hidden relative z-10 min-h-0">
+        <div className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-4 pb-4">
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -95,8 +93,9 @@ export default function CoachPage() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="p-4 bg-background/50 backdrop-blur-sm border-t border-border/50">
           <form onSubmit={handleSend} className="flex gap-2">
