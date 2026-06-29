@@ -3,13 +3,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
-import { Flame, Target, BrainCircuit, Activity, ChevronUp } from "lucide-react";
+import { Flame, Target, BrainCircuit, Activity, ChevronUp, CheckCircle2, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
+
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Dummy data for visual presentation since ML might take time to generate
 const RECOVERY_SCORE = 82;
 const CURRENT_STREAK = 14;
+
+const mockDopamineData = [
+  { day: 'Mon', stability: 45 },
+  { day: 'Tue', stability: 52 },
+  { day: 'Wed', stability: 48 },
+  { day: 'Thu', stability: 61 },
+  { day: 'Fri', stability: 59 },
+  { day: 'Sat', stability: 75 },
+  { day: 'Sun', stability: 82 },
+];
+
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -30,6 +43,15 @@ export default function DashboardOverview() {
       const res = await api.get('/dashboard');
       return res.data;
     }
+  });
+
+  const { data: plan, refetch: refetchPlan } = useQuery({
+    queryKey: ['plan'],
+    queryFn: async () => {
+      const res = await api.get('/plan');
+      return res.data;
+    },
+    refetchInterval: (data) => (data ? false : 3000), // Poll every 3s if not generated yet
   });
 
   useEffect(() => {
@@ -119,22 +141,67 @@ export default function DashboardOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <Card className="glass-card p-6 h-[400px] flex flex-col">
           <h3 className="text-lg font-semibold mb-4">Dopamine Stability Chart</h3>
-          <div className="flex-1 border border-border/50 rounded-lg border-dashed flex items-center justify-center text-muted-foreground bg-muted/5">
-            [Chart Area: To be populated by Recharts]
+          <div className="flex-1 w-full mt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mockDopamineData} margin={{ top: 5, right: 20, bottom: 5, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                <XAxis dataKey="day" stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="stability" 
+                  stroke="var(--primary)" 
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: 'var(--primary)', strokeWidth: 2, stroke: '#000' }}
+                  activeDot={{ r: 6, fill: 'var(--primary)', stroke: '#fff' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </Card>
         
         <Card className="glass-card p-6 h-[400px] flex flex-col">
-          <h3 className="text-lg font-semibold mb-4">Recent Insights from Coach</h3>
+          <h3 className="text-lg font-semibold mb-4">Your AI Recovery Program</h3>
           <div className="space-y-4 overflow-y-auto pr-2">
-            {dashboard?.daily_insight ? (
-              <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                <p className="text-sm font-medium text-primary mb-1">Daily Insight</p>
-                <p className="text-sm text-muted-foreground">{dashboard.daily_insight}</p>
+            {plan ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-primary">
+                    Phase {plan.current_phase_index + 1}: {plan.phases[plan.current_phase_index]?.title || "Recovery"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">Day {plan.current_day} of {plan.phases[plan.current_phase_index]?.duration_days || 7}</span>
+                </div>
+                <div className="space-y-2">
+                  {plan.phases[plan.current_phase_index]?.daily_tasks?.map((task: string, i: number) => {
+                    const isCompleted = plan.completed_tasks?.[`day_${plan.current_day}`]?.includes(task);
+                    return (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                        <div 
+                           className={`w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition-colors ${isCompleted ? 'bg-primary border-primary' : 'border-muted-foreground/50 hover:border-primary'}`}
+                           onClick={async () => {
+                             await api.post(`/plan/task?day=${plan.current_day}&task=${encodeURIComponent(task)}`);
+                             refetchPlan();
+                           }}
+                        >
+                           {isCompleted && <CheckCircle2 className="w-3 h-3 text-primary-foreground" />}
+                        </div>
+                        <span className={`text-sm ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                          {task}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
-              <div className="p-4 rounded-lg bg-muted/30 border border-border/50 text-center text-muted-foreground">
-                No insights available yet. Check in with the coach or log a journal entry!
+              <div className="p-4 rounded-lg bg-muted/30 border border-border/50 text-center text-muted-foreground flex flex-col items-center justify-center h-full">
+                <Loader2 className="w-6 h-6 animate-spin text-primary mb-2" />
+                <p>The AI is generating your personalized recovery program...</p>
+                <p className="text-xs mt-1">This takes about 10-20 seconds.</p>
               </div>
             )}
           </div>

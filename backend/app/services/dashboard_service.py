@@ -174,22 +174,16 @@ class DashboardService:
         self, user_id: UUID, score: int, streak: int, triggers: list
     ) -> str | None:
         """Generate a daily AI insight."""
-        try:
-            from app.ai.llm import get_llm_response
-
-            trigger_info = ", ".join(t.trigger_type for t in triggers[:3]) if triggers else "none identified yet"
-            prompt = f"""Generate a single, actionable daily insight for an addiction recovery user.
-Recovery score: {score}/100, Streak: {streak} days, Top triggers: {trigger_info}.
-Keep it under 2 sentences. Be specific and motivating, not generic."""
-
-            return await get_llm_response(prompt)
-        except Exception:
-            if streak >= 7:
-                return f"🔥 {streak}-day streak! Your consistency is building new neural pathways."
-            elif score >= 70:
-                return "Your recovery score is strong today. Keep the momentum going."
-            else:
-                return "Every small win compounds. Focus on your next 2 hours, not the whole day."
+        # Generating insights dynamically blocks the dashboard load for 2-5 seconds.
+        # Returning instant programmatic insights instead to keep UI snappy.
+        if streak == 0 and score == 0:
+            return "Welcome to day one! The first step is the hardest, but you're exactly where you need to be."
+        elif streak >= 7:
+            return f"🔥 {streak}-day streak! Your consistency is building new neural pathways."
+        elif score >= 70:
+            return "Your recovery score is strong today. Keep the momentum going."
+        else:
+            return "Every small win compounds. Focus on your next 2 hours, not the whole day."
 
     async def get_score_history(self, user_id: UUID, limit: int = 30) -> dict:
         """Get recovery score history."""

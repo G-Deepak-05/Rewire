@@ -7,6 +7,7 @@ from app.models.assessment import Assessment
 from app.models.conversation import Conversation
 from app.models.gamification import Gamification
 from app.models.journal_entry import JournalEntry
+from app.models.recovery_plan import RecoveryPlan
 from app.models.recovery_score import RecoveryScore
 from app.models.refresh_token import RefreshToken
 from app.models.trigger import Trigger
@@ -22,4 +23,5 @@ __all__ = [
     "Conversation",
     "RecoveryScore",
     "Gamification",
+    "RecoveryPlan",
 ]

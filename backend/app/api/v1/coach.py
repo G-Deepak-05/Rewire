@@ -20,6 +20,8 @@ from app.services.coach_service import CoachService
 router = APIRouter(prefix="/coach", tags=["AI Coach"])
 
 
+from fastapi.responses import StreamingResponse
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_coach(
     data: ChatRequest,
@@ -29,6 +31,20 @@ async def chat_with_coach(
     """Send a message to the AI recovery coach."""
     svc = CoachService(db)
     return await svc.chat(current_user.id, data.message, data.conversation_id)
+
+
+@router.post("/stream")
+async def stream_coach_response(
+    data: ChatRequest,
+    current_user=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stream a message to the AI recovery coach."""
+    svc = CoachService(db)
+    return StreamingResponse(
+        svc.stream_chat(current_user.id, data.message, data.conversation_id),
+        media_type="text/event-stream"
+    )
 
 
 @router.get("/conversations", response_model=ConversationListResponse)

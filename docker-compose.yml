@@ -128,8 +128,37 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./docker/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
     depends_on:
       - prometheus
+      - loki
+    networks:
+      - rewire_net
+    restart: unless-stopped
+
+  # ─── Loki ─────────────────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:latest
+    container_name: rewire_loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/loki-config.yaml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - rewire_net
+    restart: unless-stopped
+
+  # ─── Promtail ─────────────────────────────────────────────────────────────
+  promtail:
+    image: grafana/promtail:latest
+    container_name: rewire_promtail
+    volumes:
+      - ./docker/promtail-config.yaml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
     networks:
       - rewire_net
     restart: unless-stopped

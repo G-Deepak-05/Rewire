@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Bot, User, ShieldAlert } from "lucide-react";
+import { useStore } from "@/lib/store";
 
 export default function CoachPage() {
   const [messages, setMessages] = useState([
@@ -26,18 +27,59 @@ export default function CoachPage() {
 
     const userMessage = input.trim();
     setInput("");
-    setMessages(prev => [...prev, { role: "user", content: userMessage }]);
+    
+    // Add user message and a placeholder for the assistant
+    setMessages(prev => [
+      ...prev, 
+      { role: "user", content: userMessage },
+      { role: "assistant", content: "" }
+    ]);
     setIsLoading(true);
 
     try {
-      const res = await api.post("/coach/chat", {
-        message: userMessage,
-        context: "Chat interface"
-      });
+      // Get the token from the zustand store
+      const token = useStore.getState().accessToken;
       
-      setMessages(prev => [...prev, { role: "assistant", content: res.data.response }]);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/coach/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` })
+        },
+        body: JSON.stringify({ message: userMessage, context: "Chat interface" }),
+      });
+
+      if (!response.ok) throw new Error("Stream failed");
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      if (reader) {
+        setIsLoading(false); // Stop bounce animation once stream starts
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const lastIndex = newMessages.length - 1;
+            newMessages[lastIndex] = {
+              ...newMessages[lastIndex],
+              content: newMessages[lastIndex].content + chunk
+            };
+            return newMessages;
+          });
+        }
+      }
     } catch (error) {
-      setMessages(prev => [...prev, { role: "assistant", content: "I'm having trouble connecting to the core system right now. Please try again." }]);
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastIndex = newMessages.length - 1;
+        newMessages[lastIndex] = { role: "assistant", content: "I'm having trouble connecting to the core system right now. Please try again." };
+        return newMessages;
+      });
     } finally {
       setIsLoading(false);
     }

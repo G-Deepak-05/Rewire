@@ -80,6 +80,75 @@ class CoachService:
             "conversation_title": title,
         }
 
+    async def stream_chat(self, user_id: UUID, message: str, conversation_id: UUID | None = None):
+        """Stream response from the AI coach."""
+        # Get or create conversation
+        if conversation_id:
+            conversation = await self.repo.get(conversation_id)
+            if not conversation or conversation.user_id != user_id:
+                raise NotFoundError("Conversation", str(conversation_id))
+        else:
+            conversation = await self.repo.create(
+                user_id=user_id,
+                title="New Conversation",
+                messages=[],
+            )
+
+        # Add user message
+        messages = list(conversation.messages or [])
+        messages.append({
+            "role": "user",
+            "content": message,
+            "timestamp": datetime.now(UTC).isoformat(),
+        })
+
+        # Build context for the AI
+        context = await self._build_context(user_id)
+
+        # Yield chunks
+        from app.ai.llm import get_llm_streaming_response
+        from app.ai.prompts.coach_system import COACH_SYSTEM_PROMPT
+
+        system_prompt = COACH_SYSTEM_PROMPT.format(user_context=context)
+        llm_messages = [{"role": "system", "content": system_prompt}]
+        for msg in messages[-20:]:
+            llm_messages.append({"role": msg["role"], "content": msg["content"]})
+
+        full_response = ""
+        try:
+            async for chunk in get_llm_streaming_response(llm_messages):
+                full_response += chunk
+                yield chunk
+        except Exception as e:
+            logger.error("AI coach streaming failed", error=str(e))
+            fallback = self._fallback_response(message)
+            full_response = fallback
+            yield fallback
+
+        # Add AI response and update DB
+        messages.append({
+            "role": "assistant",
+            "content": full_response,
+            "timestamp": datetime.now(UTC).isoformat(),
+        })
+
+        title = conversation.title
+        if title == "New Conversation" and len(messages) >= 2:
+            title = message[:80] + ("..." if len(message) > 80 else "")
+
+        await self.repo.update(
+            conversation,
+            messages=messages,
+            title=title,
+        )
+
+        try:
+            from app.services.gamification_service import GamificationService
+            gam_svc = GamificationService(self.db)
+            await gam_svc.award_xp(user_id, 15, "coaching_session")
+        except Exception:
+            pass
+
     async def get_conversations(self, user_id: UUID) -> dict:
         """List user conversations."""
         conversations = await self.repo.get_by_user(user_id)

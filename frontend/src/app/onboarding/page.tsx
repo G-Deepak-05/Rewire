@@ -24,6 +24,30 @@ const STEPS = [
     options: ["Mild - Mostly manageable", "Moderate - Frequent urges", "Severe - Daily interference", "Critical - Controlling my life"],
   },
   {
+    id: "trigger",
+    title: "Primary Trigger",
+    subtitle: "What usually precedes a relapse?",
+    options: ["Stress & Anxiety", "Boredom", "Late Night / Insomnia", "Social Settings", "Emotional Distress"],
+  },
+  {
+    id: "sleep",
+    title: "Sleep Habits",
+    subtitle: "How many hours of sleep do you get on average?",
+    options: ["Less than 5 hours", "5-6 hours", "7-8 hours", "More than 8 hours"],
+  },
+  {
+    id: "stress",
+    title: "Stress Levels",
+    subtitle: "How would you rate your daily stress?",
+    options: ["Low - Relaxed", "Moderate - Manageable", "High - Often Overwhelmed", "Extreme - Constant Pressure"],
+  },
+  {
+    id: "good_habit",
+    title: "Keystone Habit",
+    subtitle: "Which positive habit do you want to build to replace the addiction?",
+    options: ["Daily Exercise", "Meditation / Mindfulness", "Reading / Learning", "Creative Hobbies", "Social Connection"],
+  },
+  {
     id: "goal",
     title: "Primary Objective",
     subtitle: "What is your end goal?",
@@ -50,29 +74,91 @@ export default function OnboardingWizard() {
     }
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Analyzing your responses...");
+
   const submitOnboarding = async () => {
     setIsSubmitting(true);
     try {
-      // Map to API schema format
       const severityStr = selections.severity || "";
       const severity = severityStr.includes("Severe") ? 8 : severityStr.includes("Critical") ? 10 : severityStr.includes("Moderate") ? 5 : 2;
 
       const payload = {
         bad_habits: [{ name: selections.addiction || "Other", severity: severity }],
         goals: [selections.goal || "Complete Abstinence"],
-        triggers: []
+        triggers: [selections.trigger || "Stress"],
+        sleep_hours: selections.sleep === "Less than 5 hours" ? 4 : selections.sleep === "5-6 hours" ? 5.5 : selections.sleep === "7-8 hours" ? 7.5 : 9,
+        stress_level: selections.stress?.includes("Low") ? 2 : selections.stress?.includes("High") ? 8 : selections.stress?.includes("Extreme") ? 10 : 5,
+        good_habits: [selections.good_habit || "Exercise"]
       };
 
       await api.post("/onboarding/profile", payload);
       setOnboardingStatus(true);
-      toast.success("Protocol initialized successfully.");
-      router.push("/dashboard");
+      
+      // Transition to loading screen
+      setIsGenerating(true);
+      
+      // Cycle through messages
+      const messages = [
+        "Analyzing your responses...",
+        "Our AI is curating your personalized experience...",
+        "Building your personalized dashboard...",
+        "Preparing your recommendations..."
+      ];
+      let msgIndex = 0;
+      const msgInterval = setInterval(() => {
+        msgIndex = (msgIndex + 1) % messages.length;
+        setLoadingMessage(messages[msgIndex]);
+      }, 3000);
+
+      // Redirect to dashboard after a short 3s transition
+      // We don't wait for the AI plan to finish generating here anymore to unblock the user.
+      // The dashboard itself will show a loading state for the AI plan section while it generates.
+      setTimeout(() => {
+        clearInterval(msgInterval);
+        toast.success("Protocol initialized successfully.");
+        // Force a hard reload to clear any stale react-query caches
+        window.location.href = "/dashboard";
+      }, 3000);
+
     } catch (error) {
       toast.error("Failed to save protocol. Please try again.");
-    } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isGenerating) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-1/4 w-[50%] h-[50%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md relative z-10 text-center space-y-6"
+        >
+          <div className="inline-flex items-center justify-center p-6 bg-primary/10 rounded-full border border-primary/20 mb-4">
+            <Brain className="w-16 h-16 text-primary animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground">Initializing Protocol</h2>
+          
+          <div className="space-y-4">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={loadingMessage}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="text-muted-foreground"
+              >
+                {loadingMessage}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">

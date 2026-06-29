@@ -13,6 +13,7 @@ from app.api.v1.health import router as health_router
 from app.api.v1.journal import router as journal_router
 from app.api.v1.onboarding import router as onboarding_router
 from app.api.v1.users import router as users_router
+from app.api.v1.plan import router as plan_router
 
 router = APIRouter()
 
@@ -25,3 +26,4 @@ router.include_router(journal_router)
 router.include_router(coach_router)
 router.include_router(dashboard_router)
 router.include_router(emergency_router)
+router.include_router(plan_router)

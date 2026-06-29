@@ -29,7 +29,12 @@ class User(Base, UUIDMixin, TimestampMixin):
     conversations = relationship("Conversation", back_populates="user", lazy="dynamic")
     triggers = relationship("Trigger", back_populates="user", lazy="dynamic")
     recovery_scores = relationship("RecoveryScore", back_populates="user", lazy="dynamic")
-    gamification = relationship("Gamification", back_populates="user", uselist=False)
+    gamification = relationship(
+        "Gamification", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    recovery_plan = relationship(
+        "RecoveryPlan", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
     refresh_tokens = relationship("RefreshToken", back_populates="user", lazy="dynamic")
 
     def __repr__(self) -> str:
