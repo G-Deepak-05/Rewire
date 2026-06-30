@@ -9,19 +9,7 @@ import { Progress } from "@/components/ui/progress";
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Dummy data for visual presentation since ML might take time to generate
-const RECOVERY_SCORE = 82;
-const CURRENT_STREAK = 14;
-
-const mockDopamineData = [
-  { day: 'Mon', stability: 45 },
-  { day: 'Tue', stability: 52 },
-  { day: 'Wed', stability: 48 },
-  { day: 'Thu', stability: 61 },
-  { day: 'Fri', stability: 59 },
-  { day: 'Sat', stability: 75 },
-  { day: 'Sun', stability: 82 },
-];
+// Removed dummy data variables
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -70,13 +58,22 @@ export default function DashboardOverview() {
 
   const recoveryScore = dashboard?.recovery_score || 0;
   const currentStreak = dashboard?.streak_days || 0;
+  const dopamineHistory = dashboard?.dopamine_history || [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">System Status</h1>
-          <p className="text-muted-foreground mt-1">Your dopamine baseline is stabilizing.</p>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-bold tracking-tight">System Status</h1>
+            <div className="px-2 py-1 rounded-md bg-primary/20 text-primary font-bold text-xs border border-primary/30 shadow-sm">
+              Level {dashboard?.level || 1}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mt-2">
+            <Progress value={((dashboard?.xp || 0) / (dashboard?.xp_to_next_level || 100)) * 100} className="w-48 h-2" />
+            <span className="text-xs text-muted-foreground font-medium">{dashboard?.xp || 0} / {dashboard?.xp_to_next_level || 100} XP</span>
+          </div>
         </div>
         <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-4 py-2 rounded-full">
           <Activity className="w-4 h-4 text-primary animate-pulse" />
@@ -97,6 +94,9 @@ export default function DashboardOverview() {
                 <BrainCircuit className="w-6 h-6 text-primary" />
               </div>
             </div>
+            <div className="mt-4">
+              <p className="text-xs text-muted-foreground">Overall neural stability.</p>
+            </div>
           </Card>
         </motion.div>
 
@@ -111,6 +111,9 @@ export default function DashboardOverview() {
               <div className="bg-orange-500/10 p-2 rounded-lg">
                 <Flame className="w-6 h-6 text-orange-500" />
               </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-xs text-orange-600/80 font-medium">Increments daily. Resets on relapse.</p>
             </div>
           </Card>
         </motion.div>
@@ -129,7 +132,7 @@ export default function DashboardOverview() {
                 <Target className="w-6 h-6 text-blue-500" />
               </div>
             </div>
-            <div className="mt-4 flex flex-col gap-2">
+            <div className="mt-4">
                 <span className="text-xs font-medium px-2 py-1 bg-muted rounded-md w-fit">
                   Goal: {profile?.goals?.[0] || '...'}
                 </span>
@@ -142,25 +145,34 @@ export default function DashboardOverview() {
         <Card className="glass-card p-6 h-[400px] flex flex-col">
           <h3 className="text-lg font-semibold mb-4">Dopamine Stability Chart</h3>
           <div className="flex-1 w-full mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockDopamineData} margin={{ top: 5, right: 20, bottom: 5, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                <XAxis dataKey="day" stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                  itemStyle={{ color: '#fff' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="stability" 
-                  stroke="var(--primary)" 
-                  strokeWidth={3}
-                  dot={{ r: 4, fill: 'var(--primary)', strokeWidth: 2, stroke: '#000' }}
-                  activeDot={{ r: 6, fill: 'var(--primary)', stroke: '#fff' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {dopamineHistory.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dopamineHistory} margin={{ top: 5, right: 20, bottom: 5, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                  <XAxis dataKey="day" stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="stability" 
+                    stroke="var(--primary)" 
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: 'var(--primary)', strokeWidth: 2, stroke: '#000' }}
+                    activeDot={{ r: 6, fill: 'var(--primary)', stroke: '#fff' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-center">
+                 <Activity className="w-8 h-8 text-muted-foreground/20 mb-3" />
+                 <p className="text-muted-foreground/70 font-medium max-w-[200px] text-sm leading-relaxed">
+                   Start your daily check-ins to generate your dopamine stability graph.
+                 </p>
+              </div>
+            )}
           </div>
         </Card>
         
