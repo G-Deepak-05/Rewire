@@ -28,14 +28,14 @@ export default function JournalPage() {
   const { data: entries, isLoading } = useQuery({
     queryKey: ['journal'],
     queryFn: async () => {
-      const res = await api.get('/journal/entries');
-      return res.data;
+      const res = await api.get('/journal');
+      return res.data.entries || [];
     }
   });
 
   const createEntry = useMutation({
     mutationFn: async (payload: any) => {
-      const res = await api.post('/journal/entries', payload);
+      const res = await api.post('/journal', payload);
       return res.data;
     },
     onSuccess: () => {
@@ -54,10 +54,11 @@ export default function JournalPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createEntry.mutate({
-      content,
+      notes: content,
+      entry_type: "reflection",
+      emotion: "neutral",
       stress_level: parseInt(stress) || 5,
-      cravings_today: parseInt(cravings) || 0,
-      metadata: {}
+      emotion_intensity: 5
     });
   };
 
@@ -135,11 +136,11 @@ export default function JournalPage() {
                   {format(new Date(entry.created_at), 'MMMM d, yyyy • h:mm a')}
                 </span>
                 <div className="flex gap-2 text-xs">
-                  <span className="bg-orange-500/10 text-orange-500 px-2 py-1 rounded-md">Stress: {entry.stress_level}</span>
-                  <span className="bg-red-500/10 text-red-500 px-2 py-1 rounded-md">Cravings: {entry.cravings_today}</span>
+                  {entry.stress_level && <span className="bg-orange-500/10 text-orange-500 px-2 py-1 rounded-md">Stress: {entry.stress_level}</span>}
+                  <span className="bg-primary/10 text-primary px-2 py-1 rounded-md capitalize">{entry.entry_type}</span>
                 </div>
               </div>
-              <p className="text-foreground leading-relaxed">{entry.content}</p>
+              <p className="text-foreground leading-relaxed">{entry.notes || "No additional notes provided."}</p>
             </Card>
           ))
         )}
